@@ -23,6 +23,9 @@
     "eval:llm": "node eval/run.mjs --llm"
   },
   "license": "MIT",
+  "dependencies": {
+    "js-yaml": "^4.1.0"
+  },
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"

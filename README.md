@@ -20,7 +20,7 @@ evals, plus opt-in LLM evals).
 | `eval/framework.mjs` + `eval/run.mjs` | Micro eval framework: behavior evals (free) + LLM evals (opt-in). |
 | `eval/cases/` | Example eval cases (behavior + llm). |
 | `examples/greeter/` | Complete worked example plugin, commented block by block. |
-| `docs/surfaces.md` | Copy-paste snippets for extra surfaces (tool, HTTP route, UI slots). |
+| `docs/surfaces.md` | Copy-paste snippets for extra surfaces (tool, HTTP route, UI slots, host↔browser RPC channel). |
 | `cordis.patch.yml` | Row that inserts the plugin into the profile; config defaults are changed here (or in the profile's own `cordis.patch.yml`, which takes precedence). |
 | `package.json` | `exports` (`.` + `./client` + `./cordis.patch.yml`), `dsh.bundle.patch`, `dsh.client`, scripts (`check`, `test`, `eval`, `eval:llm`). |
 
@@ -30,6 +30,45 @@ evals, plus opt-in LLM evals).
 2. **`/template` command** — registered via optional `commands` injection (`on|off|status|hello`).
 3. **Lifecycle hooks** — `ctx.on("ready" / "dispose")` + `ctx.effect` for cleanup.
 4. **Settings namespace + client** — host↔browser shared config, UI row in `settings.general.item`.
+
+## Adding dependencies to the host half
+
+The template's host module (`lib/index.js`) stays import-free on purpose.
+Out-of-tree plugins are mounted through a pnpm link inside the profile, so a
+bare import in the host module resolves from the plugin's **real folder**, not
+the profile's `node_modules`. A plugin that imports a package the profile does
+not have fails the whole profile boot with:
+
+```
+Cannot find package 'js-yaml' imported from ...\<your-plugin>\lib\index.js
+```
+
+To give your plugin host-side dependencies, declare them as real
+`dependencies` (NOT `peerDependencies`) and install them inside the plugin
+folder, so the plugin carries its own `node_modules`:
+
+```json
+{
+  "dependencies": {
+    "js-yaml": "^4.1.0"
+  }
+}
+```
+
+```
+npm install          # or: pnpm install / bun install
+```
+
+Never declare host dependencies as peers: the profile `node_modules` is not
+guaranteed to resolve them, and a missing package takes down the whole profile
+at boot. The template ships `js-yaml` in `dependencies` as a working example —
+delete it if you do not need it.
+
+The browser half is different: client modules are loaded by
+`window.__ModuleLoader__` and resolved from the web app bundle, so they must
+stay dependency-free (or depend only on injected `@deepseek-ai/*` client
+modules, e.g. `@deepseek-ai/dsh-client-connection` for the RPC channel — see
+`docs/surfaces.md`).
 
 ## Compatibility
 
@@ -106,6 +145,26 @@ Edit `lib/*.js` and `cordis.patch.yml`, then restart the profile process
 ```
 dsh plugin remove dsh-plugin-template
 ```
+
+## Cordis patch rows: entry ids vs `options.id`
+
+The loader prefixes every entry id with its tree namespace: an entry mounted
+through an include shows up in runtime logs and loader APIs as
+`include:dsh-plugin-template`. A patch row, however, must target the entry's
+**composed id** — the `id` written in the entry list (`dsh-plugin-template`),
+i.e. `entry.options.id`:
+
+```yaml
+- id: dsh-plugin-template
+  disabled: true
+```
+
+Writing the namespaced id (`include:dsh-plugin-template`) matches nothing: the
+include logs `patch: entry not found` and skips the row, so it silently does
+nothing. This matters most for plugins that write `cordis.patch.yml` rows at
+runtime (the loader's `{ id, disabled }` patch semantics are the same for
+every patch source — the bundle's own patch, the profile's, and `--patch`
+overlays).
 
 ## Customization checklist
 

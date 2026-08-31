@@ -65,6 +65,104 @@ ctx.inject(["settings"], (settingsCtx) => {
 });
 ```
 
+## Host ↔ browser: RPC channel (action surface)
+
+The generic RPC channel in `@deepseek-ai/dsh-client-connection` lets the
+browser call back into the host and get a result — the "action" counterpart of
+the settings namespace's shared config. The host registers a channel; the
+browser calls an endpoint on it. The result envelope is validated on both
+sides, so the failure shape matters (see the error-code note below).
+
+Host half (`lib/index.js`):
+
+```js
+// "connection" is an optional service: inject it like commands below, so a
+// composition without client-connection still gets the rest of the plugin.
+ctx.inject(["connection"], (connectionCtx) => {
+  connectionCtx.connection.rpc.handle(
+    "/my-plugin-actions",
+    async (endpoint, payload, signal) => {
+      if (endpoint !== "install") {
+        return {
+          ok: false,
+          error: { code: "bad-request", message: "unknown endpoint", details: { issues: [] } },
+        };
+      }
+      try {
+        const installed = await installSomething(payload);
+        return { ok: true, value: installed };
+      } catch (error) {
+        return { ok: false, error: { code: "internal", message: String(error), details: {} } };
+      }
+    },
+    // REQUIRED options — see the notes below.
+    { authority: "loopback" }
+  );
+});
+```
+
+Notes:
+
+- **`options` (the third argument) is required.** `register()` reads
+  `options.authority` before anything else; calling `rpc.handle(channel,
+  handler)` without it throws `TypeError: Cannot read properties of undefined
+  (reading 'authority')` inside the `ctx.inject` child fiber, which fails
+  **silently**: the plugin entry stays "active", the route never registers, and
+  the SPA fallback answers the browser POST with 405. Always pass
+  `{ authority: "loopback" }`, or the serving authority (declared in the
+  connection plugin's `trustedHosts` config / `--trusted-host` flag) for
+  trusted-host LAN deployments.
+- **Channel names** must match `/^\/[A-Za-z0-9._~-]+$/` and must not be
+  `/api` (reserved).
+- The handler receives `(endpoint, payload, signal)` and must **return** the
+  RPC result envelope: `{ ok: true, value }` on success, or
+  `{ ok: false, error: { code, message, details } }` on failure.
+- **Error codes must be members of `rpcErrorSchema`.** The browser validates
+  every response with `rpcResultSchema` (from `@deepseek-ai/dsh-host-apiproxy`
+  / `api`), a discriminated union on `code`. Returning a custom code (e.g.
+  `"install-failed"`) makes the client reject the response with a confusing
+  `invalid_union` error instead of your message. Custom channels should use
+  `code: "internal"` with `details: {}`, or `code: "bad-request"` with
+  `details: { issues: [] }`.
+- **Do not throw from the handler for business errors**: a throw makes the
+  host answer HTTP 500 (`handler failure: ...`) and the client sees a
+  transport failure, not your error. Return the failure envelope instead.
+- `rpc.handle` registers the route (and its removal) through the context's
+  effect lifecycle, so no manual cleanup is needed.
+
+Browser half (`lib/client.js`):
+
+- Add `"@deepseek-ai/dsh-client-connection"` to `dsh.client.inject` in
+  `package.json` so the module ships in the web bundle, and `"connection"` to
+  the client module's `inject` array:
+
+```json
+"client": {
+  "platform": "web",
+  "inject": [
+    "@deepseek-ai/dsh-client-runtime",
+    "@deepseek-ai/dsh-client-locale",
+    "@deepseek-ai/dsh-client-ui-settings",
+    "@deepseek-ai/dsh-client-connection"
+  ]
+}
+```
+
+```js
+// inject: ["slots", "locale", "settingsScope", "connection"]
+const connection = ctx.get("connection");
+const result = await connection.rpc.call("/my-plugin-actions", "install", { name: "x" });
+if (result.ok) {
+  // result.value — the installed thing
+} else {
+  // result.error — { code, message, details } with a schema-known code
+}
+```
+
+- `rpc.call(channel, endpoint, payload)` resolves to `{ ok: true, value }` or
+  `{ ok: false, error }`; the response is validated against `rpcResultSchema`,
+  so the failure envelope must carry a known code (see above).
+
 ## Client: UI slots
 
 Slots are injected by name. Common ones (see the web client packages):
