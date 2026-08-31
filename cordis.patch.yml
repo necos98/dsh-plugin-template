@@ -1,0 +1,20 @@
+# dsh-plugin-template bundle patch: inserts the template row over the
+# composed profile. The row registers a deployment-wide system-prompt section
+# (policy band, order 50), the /template command, a settings namespace used by
+# the web client, and lifecycle hooks. Config is validated at plugin load.
+#
+# Edit this file (or the profile's own cordis.patch.yml, which outranks it) to
+# change defaults, then restart the profile process.
+
+- insert:
+    - id: dsh-plugin-template
+      name: dsh-plugin-template
+      config:
+        enabled: true
+        section: >-
+          Follow the project conventions: small focused files, meaningful
+          comments, no placeholder stubs left behind. This is the template
+          policy section — replace it with what your plugin must enforce.
+        order: 50
+        allowCommand: true
+        greeting: Hello from dsh-plugin-template
