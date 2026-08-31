@@ -3,10 +3,6 @@
 Blank project for building plugins on the **DSH** (DeepSeek Harness) harness.
 Start from here: rename it, then delete what you don't need.
 
-Built on the real anatomy of the reference plugins
-(`dsh-plugin-caveman-mode`, `dsh-plugin-coding-styles`,
-`dsh-credit-meter`, `dsh-sound-notify`).
-
 ## Structure
 
 | File | Role |
