@@ -23,6 +23,19 @@ Built on the real anatomy of the reference plugins
 3. **Lifecycle hooks** — `ctx.on("ready" / "dispose")` + `ctx.effect` for cleanup.
 4. **Settings namespace + client** — host↔browser shared config, UI row in `settings.general.item`.
 
+## Compatibility
+
+Built and verified against **DSH 0.1.1-rc.2** (the channel the current harness
+runs on). Peer dependency ranges:
+
+| Package | Range |
+|---|---|
+| `@deepseek-ai/cordis` | `^4.0.1` |
+| `@deepseek-ai/dsh-system-prompt` | `^0.1.1-rc.2` |
+
+Client modules are injected by name (`dsh.client.inject`) and resolved from the
+web app bundle, so they need no version pin.
+
 ## Dev loop
 
 From the profile that runs the web app (the folder where `dsh` boots):
