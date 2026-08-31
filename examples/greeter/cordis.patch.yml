@@ -1,0 +1,9 @@
+# dsh-plugin-greeter-example bundle patch.
+- insert:
+    - id: greeter-example
+      name: dsh-plugin-greeter-example
+      config:
+        section: >-
+          Be warm and friendly. Keep answers short but kind.
+        name: friend
+        order: 60
