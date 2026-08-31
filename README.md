@@ -1,50 +1,50 @@
 # dsh-plugin-template
 
-Blank project per creare plugin sull'harness **DSH** (DeepSeek Harness).
-Parti da qui, rinomina, cancella ciò che non ti serve.
+Blank project for building plugins on the **DSH** (DeepSeek Harness) harness.
+Start from here: rename it, then delete what you don't need.
 
-Basato sull'anatomia reale dei plugin di riferimento
+Built on the real anatomy of the reference plugins
 (`dsh-plugin-caveman-mode`, `dsh-plugin-coding-styles`,
 `dsh-credit-meter`, `dsh-sound-notify`).
 
-## Struttura
+## Structure
 
-| File | Ruolo |
+| File | Role |
 |---|---|
-| `lib/index.js` | Nodo **host** (Cordis): sezione `systemPrompt`, comando `/template`, hook di lifecycle, namespace `settings` per il client. Config validata al load (`resolveConfig`). |
-| `lib/client.js` | Metà **browser** (web): riga nel General settings, sincronizzata col namespace host via `settingsScope`, dizionari i18n, slot UI. |
-| `cordis.patch.yml` | Riga che inserisce il plugin nel profile; i default di config si cambiano qui (o nel `cordis.patch.yml` del profile, che ha priorità). |
-| `package.json` | `exports` (`.` + `./client` + `./cordis.patch.yml`), `dsh.bundle.patch`, `dsh.client` (platform web + inject dei moduli client). |
+| `lib/index.js` | **Host** node (Cordis): `systemPrompt` section, `/template` command, lifecycle hooks, `settings` namespace for the client. Config validated at load (`resolveConfig`). |
+| `lib/client.js` | **Browser** half (web): a row in General settings, synced with the host namespace via `settingsScope`, i18n dictionaries, UI slot. |
+| `cordis.patch.yml` | Row that inserts the plugin into the profile; config defaults are changed here (or in the profile's own `cordis.patch.yml`, which takes precedence). |
+| `package.json` | `exports` (`.` + `./client` + `./cordis.patch.yml`), `dsh.bundle.patch`, `dsh.client` (web platform + client module injects). |
 
-## Superfici incluse (una ciascuna, eliminabili)
+## Included surfaces (one each, removable)
 
-1. **Sezione `systemPrompt`** — `text` come funzione: si accende/spegne da config a runtime, senza restart.
-2. **Comando `/template`** — registrato via inject opzionale di `commands` (`on|off|status|hello`).
-3. **Hook di lifecycle** — `ctx.on("ready" / "dispose")` + `ctx.effect` per il cleanup.
-4. **Namespace settings + client** — config condivisa host↔browser, riga UI in `settings.general.item`.
+1. **`systemPrompt` section** — `text` as a function: toggled from config at runtime, no restart.
+2. **`/template` command** — registered via optional `commands` injection (`on|off|status|hello`).
+3. **Lifecycle hooks** — `ctx.on("ready" / "dispose")` + `ctx.effect` for cleanup.
+4. **Settings namespace + client** — host↔browser shared config, UI row in `settings.general.item`.
 
 ## Dev loop
 
-Dal profile che fa girare la web app (la cartella con `dsh` boot):
+From the profile that runs the web app (the folder where `dsh` boots):
 
 ```
-dsh plugin add .            # self-link dalla checkout del plugin
+dsh plugin add .            # self-link from the plugin checkout
 dsh plugin list
 ```
 
-Modifica `lib/index.js` e `cordis.patch.yml`, poi riavvia il processo del
-profile (il client web ha HMR via `dsh-plugin-hmr`). Per rimuovere:
+Edit `lib/index.js` and `cordis.patch.yml`, then restart the profile process
+(the web client hot-reloads via `dsh-plugin-hmr`). To remove:
 
 ```
 dsh plugin remove dsh-plugin-template
 ```
 
-## Checklist di personalizzazione
+## Customization checklist
 
-1. Rinomina la cartella e il `name` in `package.json` (es. `dsh-plugin-my-thing`).
-2. Aggiorna `cordis.patch.yml`: `id` e `name` + i default di config.
-3. Sostituisci sezione, comando e hook in `lib/index.js` con la tua logica.
-4. Se non ti serve la UI web: elimina `lib/client.js` e il blocco `dsh.client`
-   dal package.json, e togli il namespace `settings` dall'host.
-5. Se non ti serve il comando: `allowCommand: false` o cancella il blocco.
-6. Aggiorna `description` e questo README.
+1. Rename the folder and the `name` in `package.json` (e.g. `dsh-plugin-my-thing`).
+2. Update `cordis.patch.yml`: `id` and `name` plus the config defaults.
+3. Replace the section, command and hooks in `lib/index.js` with your own logic.
+4. If you don't need the web UI: remove `lib/client.js` and the `dsh.client`
+   block from package.json, and drop the `settings` namespace from the host.
+5. If you don't need the command: set `allowCommand: false` or delete the block.
+6. Update the `description` and this README.
